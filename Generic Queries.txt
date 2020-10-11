@@ -1,0 +1,13 @@
+// Query to list of all nodes
+
+// Gives the status of the node
+GET /_nodes
+
+// Gives the information about the state of the cluster
+GET /_cluster/state
+
+// Gives the information about the nodes with proper headers
+GET /_cat/nodes?v
+
+// Gives the information about the indices with proper headers
+GET /_cat/indices?v
