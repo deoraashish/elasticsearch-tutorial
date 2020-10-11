@@ -1,0 +1,167 @@
+// Query to create index with settings. To create index with default options, just don't pass settings objects. The status of this indice will be yellow since the replicas are not assigned unless the number of nodes > 1
+PUT /products
+{
+  "settings": {
+    "number_of_shards": 2
+    , "number_of_replicas": 2
+  }
+}
+
+// checking status
+GET /_cat/indices?v
+
+// to delete the indice
+DELETE /products
+
+// adding documents to the products index with default id
+
+POST /products/_doc
+{
+  "name": "Coffee maker",
+  "price": 64,
+  "in_stock": 10
+}
+
+// adding documents to the products index with a custom id. This same query can be used to replace the document
+
+PUT /products/_doc/100
+{
+  "name": "Toaster",
+  "price": 48,
+  "in_stock": 12
+}
+
+
+// Retrieving the document by id. The endpoint remains the same, only the http verb changes
+// In the result, the document will be present in _source key and the "found" key will be set to true
+
+GET /products/_doc/100
+
+
+// To update the document, call the update api followed by the key-value pairs that needs to be updated. If a new field needs to be added, just specify in the update API.
+// The update API doesn't update the document. It just replaces. Documents are hence immutable in elasticsearch
+// In the below request, 100 is the document id
+
+GET /products/_doc/100
+
+POST /products/_doc/100/_update
+{
+  "doc": {
+    "in_stock": 11,
+    "tags": [
+      "electronics",
+      "homeappliances"
+    ]
+  }
+}
+
+// In the update api, you can also pass scripts and params
+// In the script, ctx stands for the context object and _source stands for the document
+
+GET /products/_doc/100
+
+POST /products/_doc/100/_update
+{
+  "script": {
+    "source": """
+      if (ctx._source.in_stock > params.quantity) {
+        ctx._source.in_stock -= params.quantity
+      }
+    """,
+    "params": {
+      "quantity": 4
+    }
+  }
+}
+
+// In the update api, you can also provide a default document. this default document will be added as "Upsert" when the document is not found.
+
+
+POST /products/_doc/101/_update
+{
+  "script": {
+    "source": "ctx._source.in_stock++"
+  },
+  "upsert": {
+    "name": "Blender",
+    "price": 399,
+    "in_stock": 4
+  }
+}
+
+GET /products/_doc/101
+
+
+
+// Query to delete the document by id
+
+DELETE /products/_doc/101
+
+GET /products/_doc/101
+
+
+// Update by query is a way in which you can update the documents by supplying an update script and a search query. This is equivalent to SQL's update statement with Set arguments and where clause
+
+// Below query decremented the in_stock count of all documents by 1
+
+POST /products/_update_by_query
+{
+  "script": {
+    "source": "ctx._source.in_stock--"
+  },
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /products/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+// delete by query is equvivalent of update_by_query. The only difference is that it deletes the document instead of updating them. Please note that this uses a POST Http verb and not delete
+
+
+POST /products/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+// Bulk api uses application/x-ndjson format. In this, you specify action metadata and action data each on one line and all the lines should end by a line break char. The order in which actions are passed are processed. And the result of each action is supplied back. If any one action fails because of any validation error or conflict, the rest of the execution continues. That's the whole point of having a bulk api
+
+// Inserting docs using bulk api. Here for every action you are specifying the index name. First action is index which add/replaces data and throws no error, second action is "create" which returns error if the document exists. Also, you can choose to not specify id of the document in which case default document id will be assigned by the elasticsearch.
+
+POST /_bulk
+{ "index": { "_index": "products", "_type": "_doc" , "_id": 200 } }
+{ "name": "Espresso Machine", "price": 149, "in_stock": 5 }
+{ "create": { "_index": "products", "_type": "_doc", "_id": 201 } }
+{ "name": "Milk Frother", "price": 129, "in_stock": 4 }
+
+// In the following bulk request, first we will update one doc and in second we will delete a doc. Also note that if the index name is same for all actions, you can specify them in the endpoint. Which also means that the individual indice also has the bulk api support to them.
+
+POST /products/_bulk
+{ "update": { "_type": "_doc", "_id": 200 } }
+{ "doc": {"price": 144} }
+{ "delete": { "_type": "_doc", "_id": 201 } }
+
+
+// Let's experiment. First we will add one product and in next action, we will try to update it
+
+POST /_bulk
+{ "index": { "_index": "products", "_type": "_doc", "_id": 202 } }
+{ "name": "Blender", "price": 122, "in_stock": 3 }
+{ "update": { "_index": "products", "_type": "_doc", "_id": 202 } }
+{ "doc": { "price": "123" } }
+
+// Wow! This means that the operations in bulk api are preocessed one after the another. They are not async in nature. Awesome
+
+POST /products/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
