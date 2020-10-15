@@ -1,0 +1,614 @@
+// Example of Analyze api. Here we have used standard analyzer. However, we can use custom analyzers as well. Analyzer is like a pipeline of operations that are performed on the text. the pipe-line has three main components - char-filters - this filters out punctiontions and unwanted information, tokenziers - this breaks the strings in to tokens and token-filters - this applies a central operation on all tokens
+
+
+POST /_analyze
+{
+  "text": "2 guys walk into   a bar, but the third... DUCKS! :-)"
+  , "analyzer": "standard"
+}
+
+// You can supply "keyword" as analyzer. This is essentially passed when the data type is keyword. It's no-operation analyzer. Which means it doesn't do anything on the string and returns the entire string as a unmodified single token.
+
+// Breaking the Standard Analyzer into the individual components of its pipeline
+
+POST /_analyze
+{
+  "text": "2 guys walk into   a bar, but the third... DUCKS! :-)"
+  , "char_filter": [],
+  "tokenizer": "standard",
+  "filter": ["lowercase"]
+}
+
+// In the filter, you can pass Uppercase as well and all the tokens will be converted to uppercase strings
+
+// In Array of text type, all the values are concatenated and stored as string. Array elements are concatenated with whitespace separator and stored as a single string. Then analyzed and all. For example, check the offsets of "is" and "Apple" in below example
+
+POST /_analyze
+{
+  "text": ["Apple", "is banana"]
+  , "analyzer": "standard"
+}
+
+Output:
+{
+  "tokens" : [
+    {
+      "token" : "apple",
+      "start_offset" : 0,
+      "end_offset" : 5,
+      "type" : "<ALPHANUM>",
+      "position" : 0
+    },
+    {
+      "token" : "is",
+      "start_offset" : 6,
+      "end_offset" : 8,
+      "type" : "<ALPHANUM>",
+      "position" : 1
+    },
+    {
+      "token" : "banana",
+      "start_offset" : 9,
+      "end_offset" : 15,
+      "type" : "<ALPHANUM>",
+      "position" : 2
+    }
+  ]
+}
+
+
+// Creating an index with an explicit mapping
+
+PUT /reviews?include_type_name=false
+{
+  "mappings": {
+    "properties": {
+      "rating": { "type": "float" },
+      "content": { "type": "text" },
+      "product_id": { "type": "integer" },
+      "author": {
+        "properties": {
+          "first_name": { "type": "text" },
+          "last_name": { "type": "text" },
+          "email": { "type": "keyword" }
+        }
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1
+  }
+}
+
+PUT /reviews/_doc/1
+{
+  "rating": 3.5,
+  "content": "This product is awesome",
+  "product_id": 123,
+  "author": {
+    "first_name": "ashish",
+    "last_name": "deora",
+    "email": "ash248cool@gmail.com"
+  }
+}
+
+GET /reviews/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+
+// To retreive the mapping of an index (specified explicitly or implicitly)
+
+GET /reviews/_mapping?include_type_name=false
+
+// To retreive the type of a specific field
+
+GET /reviews/_mapping/field/content?include_type_name=false
+
+// To get the type of a specific field of an object type.
+
+GET /reviews/_mapping/field/author.email?include_type_name=false
+
+
+
+// For object type, you can also use dot_notation
+
+// without dot-notation
+PUT /reviews/_doc/1
+{
+  "rating": 3.5,
+  "content": "This product is awesome",
+  "product_id": 123,
+  "author": {
+    "first_name": "ashish",
+    "last_name": "deora",
+    "email": "ash248cool@gmail.com"
+  }
+}
+
+// with dot-notation. this will return the same format in which you have entered information because the source is returned and not the data that's actually stored inside the elasticsearch
+PUT /reviews/_doc/2
+{
+  "rating": 4,
+  "content": "This product is goood",
+  "product_id": 124,
+  "author.first_name": "Vinay",
+  "author.last_name": "makwana",
+  "author.email": "vinay@gmail.com"
+}
+
+GET /reviews/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /reviews/_mapping?include_type_name=false
+
+
+// You can alter mapping of an index later as well. Let's say you want to create a new field called "created_at".
+
+PUT /reviews/_mapping?include_type_name=false
+{
+  "properties": {
+    "created_at": { "type": "date" }
+  }
+}
+
+GET /reviews/_mapping
+
+// This newly created field will not be inserted in all other documents. It will be part of all other documents which  are created after adding the field.
+
+
+// Examples of some documents with different date formats
+
+// date without any time format. When no time is specified, elasticsearch gives the date midnight time and stores.
+PUT /reviews/_doc/3
+{
+  "rating": 4.5,
+  "content": "The coffee was average",
+  "product_id": 123,
+  "created_at": "2015-03-07",
+  "author": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "johndoe@example.com"
+  }
+}
+
+
+// Date with time specified in UTC Format. As per ISO 8601, time is separated by letter T and ended by Z.
+
+
+PUT /reviews/_doc/4
+{
+  "rating": 3.0,
+  "content": "Could be better",
+  "product_id": 123,
+  "created_at": "2015-03-07T23:34:00Z",
+  "author": {
+    "first_name": "Johan",
+    "last_name": "Fernandez",
+    "email": "johan@example.com"
+  }
+}
+
+
+// Reindexing the index by changing the data type of product_id field from long to keyword
+
+// first retrieveing the current mapping
+
+GET /reviews/_mapping
+
+// Creating new indice with the current type
+
+PUT /reviews_new
+{
+  "mappings": {
+    "_doc": {
+      "properties": {
+        "author": {
+          "properties": {
+            "email": {
+              "type": "keyword"
+            },
+            "first_name": {
+              "type": "text"
+            },
+            "last_name": {
+              "type": "text"
+            }
+          }
+        },
+        "content": {
+          "type": "text"
+        },
+        "created_at": {
+          "type": "date"
+        },
+        "product_id": {
+          "type": "keyword"
+        },
+        "rating": {
+          "type": "float"
+        }
+      }
+    }
+  }
+}
+
+// Now reindex the document. This type, we will use the re-index api to put the data from source to destination and also apply a script while migrating the data
+
+POST /_reindex
+{
+  "source": {
+    "index": "reviews"
+  },
+  "dest": {
+    "index": "reviews_new"
+  },
+  "script": {
+    "source": """
+      if (ctx._source.product_id != null) {
+        ctx._source.product_id = ctx._source.product_id.toString()
+      }
+    """
+  }
+}
+
+GET /reviews_new/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+// Query to delete the contents of an index
+GET /reviews/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+// While reindexing, you can also specify a search criteria to only reindex the docs which meet a specific criteria, more information in notes section
+
+
+// You can assign aliases to fields. This aliases are alternative field names that can be used while querying. The aliases are query level construct and has no impact on the underlying index data. Similar to field aliases, index names can also be configured at node/cluster level
+
+GET /reviews_new/_mapping
+
+PUT /reviews_new/_mapping?include_type_name=false
+{
+  "properties": {
+    "comment": {
+      "type": "alias",
+      "path": "content"
+    }
+  }
+}
+
+GET /reviews_new/_search
+{
+  "query": {
+    "match": {
+      "comment": "better"
+    }
+  }
+}
+
+GET /reviews_new/_alias
+
+
+
+// You can specify more than one type to a field while creating a mapping.
+// In the below example, we will create a temporary index with a field which will have text and keyword types
+
+PUT /multi_type_field?include_type_name=false
+{
+  "mappings": {
+   "properties": {
+     "Title": {
+       "type": "text"
+     },
+     "ingredient": {
+       "type": "text",
+       "fields": {
+         "keyword": {
+           "type": "keyword"
+         }
+       }
+     }
+   }
+  }
+}
+
+// Indexing a doc
+POST /multi_type_field/_doc/1
+{
+  "Title": "This is my fav banana dish",
+  "ingredient": ["Apple", "banana", "chickoo"]
+}
+
+// Full text search 
+GET /multi_type_field/_search
+{
+  "query": {
+    "match": {
+      "ingredient": "banana"
+    }
+  }
+}
+
+// Keyword Search
+GET /multi_type_field/_search
+{
+  "query": {
+    "term": {
+      "ingredient.keyword": "banana"
+    }
+  }
+}
+
+// both of the above search yields same result
+
+// Index Templates
+
+// Index tempmlates.
+// Basically, here you provide a set of mappings and index name pattern. All the indexes which are created in the future with a name whose pattern matches then the mapping is applied.
+
+// Sample index template. In below index template, all the indices which have access-logs in its name will be created using the following mapping
+
+PUT /_template/access-logs?include_type_name=false
+{
+  "index_patterns": [
+    "access-logs-*"
+  ],
+  "mappings": {
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "url.original": {
+        "type": "keyword"
+      },
+      "http.request.referrer": {
+        "type": "keyword"
+      },
+      "http.response.status_code": {
+        "type": "long"
+      }
+    }
+  }
+}
+
+// Now let's create a index with name similar to access-logs and  without giving any mapping
+
+PUT /access-logs-2020-10-13
+
+GET /access-logs-2020-10-13
+
+
+// Dynamic mapping is enabled by default. It will map text fields both as Text and Keyword by default
+
+// While creating an index, you can supply a parameter called "dynamic". In this parameter, you can pass three values = false, true or strict. When its true then dynamic mapping will apply, when its false, dynamic mapping will not apply and the new field's data gets ignored from indexing and strict. In strict, the document bearing the fields which are not part of mapping will be rejected.
+
+// Dynamic = strict
+PUT /people?include_type_name=false
+{
+  "settings": {
+    "number_of_shards": 1
+    , "number_of_replicas": 1
+  }, 
+  "mappings": {
+  "dynamic": "strict",
+    "properties": {
+      "first_name": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+PUT /people/_doc/1
+{
+  "first_name": "Ashish",
+  "last_name": "deora"
+}
+
+GET /people/_mapping
+
+// Dynamic = false
+PUT /people2?include_type_name=false
+{
+  "settings": {
+    "number_of_shards": 1
+    , "number_of_replicas": 1
+  }, 
+  "mappings": {
+  "dynamic": false,
+    "properties": {
+      "first_name": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+PUT /people2/_doc/1
+{
+  "first_name": "Ashish",
+  "last_name": "deora"
+}
+
+GET /people/_mapping
+
+// Searching on last_name field
+GET /people2/_search
+{
+  "query": {
+    "match": {
+      "last_name": "deora"
+    }
+  }
+}
+
+GET /people2/_search
+{
+  "query": {
+    "match": {
+      "first_name": "ashish"
+    }
+  }
+}
+
+// You can enable/disable dynamic mapping at the index settings object. And then you can enable it for some field that you think might require it in future.
+
+DELETE /people
+
+
+// Example of dynamic mapping templates. In this, you can specify what type to be used for dynamic mapping. These rules can be defined basis the field name or the data type the field's data has been resolved by default
+
+// in the below example, all the numbers are mapped as integers instead of long.
+
+PUT /dynamic_mapping_templates_example?include_type_name=false
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1
+  }, 
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "integers": {
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "integer"
+          }
+        }
+      }
+    ]
+  }
+}
+
+// indexing a document that should be ideally indexed as long
+PUT /dynamic_mapping_templates_example/_doc/1
+{
+  "my_fav_number": 2
+}
+
+GET /dynamic_mapping_templates_example/_mapping
+
+// sample output
+{
+  "dynamic_mapping_templates_example" : {
+    "mappings" : {
+      "_doc" : {
+        "dynamic_templates" : [
+          {
+            "integers" : {
+              "match_mapping_type" : "long",
+              "mapping" : {
+                "type" : "integer"
+              }
+            }
+          }
+        ],
+        "properties" : {
+          "my_fav_number" : {
+            "type" : "integer"
+          }
+        }
+      }
+    }
+  }
+}
+
+// Building a custom analyzer. The custom analyzer is named as "My custom analyzer". In this custom analzyer, first the html tags will be removed and html entities are converted to their actual value. Then this will be tokenized by remove stop words, ascii converstion and lowercasing
+
+You can configure different types of stop word char_filters for different languages. For example, below is the xample of danish stop word filters:
+"filter": {
+  
+  "my_danish_stop_word": {
+    "type": "stop",
+    "stopwords": "_danish_"
+  }
+}
+
+PUT /analyzer_test
+{
+  "settings": {
+    "number_of_replicas": 1,
+    "number_of_shards": 1, 
+    "analysis": {
+      "filter": {},
+      "char_filter": {},
+      "tokenizer": {},
+      "analyzer": {
+        "my_custom_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "html_strip"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "stop",
+            "asciifolding"
+          ]
+        }
+      }
+    }
+  }
+}
+
+POSt /analyzer_test/_analyze
+{
+  "analyzer": "my_custom_analyzer",
+  "text": "This is a lovely &nbsp; place to be <strong> Ahaa!</strong> <br/>"
+}
+
+
+// You cannot add/update analyzers of an index if its open. Open means available for querying. To make changes in analyzers and anything in analysis section, the index must be closed first.
+
+
+POST /analyzer_test/_close
+
+// Adding analyzer now to it. Second analyzer:
+PUT /analyzer_test/_settings
+{
+  "analysis": {
+    "filter": {},
+    "char_filter": {},
+    "tokenizer": {},
+    "analyzer": {
+      "my_custom_analyzer2": {
+        "type": "custom",
+        "char_filter": [
+          "html_strip"
+        ],
+        "tokenizer": "standard",
+        "filter": [
+          "lowercase",
+          "stop",
+          "asciifolding"
+        ]
+      }
+    }
+  }
+}
+
+GET /analyzer_test/_settings
+
+// If you don't change the name of the second analyzer then it just replaces the old one with the new
+
+POST /analyzer_test/_open
+
+
+// Please note that you can update the analyzer but the updated analyzer is not applied on all documents. It's applied to only those documents which are indexed after its updation. To apply to all, just use update_by_query and update all documents
+
+POST analyzer_test/_update_by_query
