@@ -1,0 +1,80 @@
+# This is a comment
+
+# ---------------------------------------Searching through URI -----------------------------------
+# You can search the documents using the URI syntax. In this syntax, you fire URL with search params. Like:
+
+GET /products/_search?q=name:Lobster
+
+# The above query searches all the documents in Products index and selects the one which has name as Lobster. If the field is an array, supply the matching params in the same way.
+
+# For Boolean Logic, please use the keyword AND or OR (url-encode the uri when firing through a browser or something)
+
+GET /products/_search?q=name:Lobster AND tags:Meat
+
+
+#------------------------------Search Queries ---------------------------------
+#------------------------------Match all -------------------------------------
+
+GET /products/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+
+#------------------------------Search Queries ---------------------------------
+#------------------------------ term query with explanation param -------------------------------------
+
+# Term queries only run on keyword type
+
+GET /products/_search
+{
+  "query": {
+    "term": {
+      "name": {
+        "value": "lobster"
+      }
+    }
+  },
+  "explain": true
+}
+
+
+#------------------------------Search Queries ---------------------------------
+#Difference between Term query and Match query
+
+#1 Query 1
+GET /products/_search
+{
+  "query": {
+    "term": {
+      "name": {
+        "value": "Lobster"
+      }
+    }
+  }
+}
+
+# Query 2
+GET /products/_search
+{
+  "query": {
+    "term": {
+      "name": {
+        "value": "lobster"
+      }
+    }
+  },
+  "explain": true
+}
+
+# Query 3
+GET /products/_search
+{
+  "query": {
+    "match": {
+      "name": "lobster"
+    }
+  }
+}
