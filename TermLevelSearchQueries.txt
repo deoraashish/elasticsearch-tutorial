@@ -1,0 +1,291 @@
+Mapping:
+
+{
+  "products" : {
+    "mappings" : {
+      "_doc" : {
+        "properties" : {
+          "created" : {
+            "type" : "date",
+            "format" : "yyyy/MM/dd HH:mm:ss||yyyy/MM/dd||epoch_millis"
+          },
+          "description" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "in_stock" : {
+            "type" : "long"
+          },
+          "is_active" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          },
+          "price" : {
+            "type" : "long"
+          },
+          "sold" : {
+            "type" : "long"
+          },
+          "tags" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+#------------------------------Term Queries ---------------------------------
+#----------------------------Sample Term Queries----------------------------
+
+GET /products/_search
+{
+  "query": {
+    "term": {
+      "is_active": {
+        "value": true
+      }
+    }
+  }
+}
+
+#----------------------------Searching for multiple terms ----------------------------
+
+# In the below query, we are searching for documents with Tag field containing either Cake or Soup. Tags Field has Multiple mapping as Keyword as well as text. Here, we are searching for keyword
+GET /products/_search
+{
+  "query": {
+    "terms": {
+      "tags.keyword": [
+        "Cake",
+        "Soup"
+      ]
+    }
+  }
+}
+
+# Similar to this, you can also use ids query to pass an array of ids and the documents matching the ids will be returned. This is equivalent of IN query of SQL
+
+#----------------------------Searching by Range Query ----------------------------
+
+
+# In  the below query, we are supplying two values for greater than equal and lesser than equal. It's not mandatory to provide both the values. You can provide eitherr as well. also, gt and lt are availabe if you want to exclude the boundaries
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "in_stock": {
+        "gte": 1,
+        "lte": 3
+      }
+    }
+  }
+}
+
+# In the below query we are using date field in the range query. In the range query, we are providing the format as query params
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "created": {
+        "gte": "2011-12-31",
+        "lte": "2012-12-31",
+        "format": "yyyy-MM-dd"
+      }
+    }
+  }
+}
+
+#------------------------------Term Queries ---------------------------------
+#----------------------------Searching by Date Math ----------------------------
+# This is where fun starts. This is how it works. You specify an anchor date and then you can subtract and/or days/months/years, etc to it. You can also have today's date as now and the dates can be rounded off as well. Sample below
+
+#Searching for products with createdOn higher than or equal to today
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "created": {
+        "gte": "now"
+      }
+    }
+  }
+}
+
+#Searching for products with createdOn on anchor date i.e. 2009/10/21 + 1 year
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "created": {
+        "gte": "2009/10/21||+1y"
+      }
+    }
+  }
+}
+
+#Searching for products with createdOn on anchor date i.e. 2009/10/21 - 1 month
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "created": {
+        "gte": "2009/10/21||-1M"
+      }
+    }
+  }
+}
+
+#And you can round-off the date as well depending on the gte/lte logic. For add rounding off, just add /M this means round-off to nearest month
+
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "created": {
+        "gte": "2009/10/21||+1y/M"
+      }
+    }
+  }
+}
+
+#------------------------------Term Queries ---------------------------------
+#----------------------------Searching by NotNull  ----------------------------
+#Similar to SQL, you can also search for documents where a specific field is not null. For example in the below example, we will look for docucments where a particular field has some value.
+
+GET /products/_search
+{
+  "query": {
+    "exists": {
+      "field": "tags"
+    }
+  }
+}
+
+# The above query checks and displayes only those documents whch have the tags arrayed filled with something
+
+#------------------------------Term Queries ---------------------------------
+#----------------------------Matching based on prefixes  ----------------------------
+
+GET /products/_search
+{
+  "query": {
+    "prefix": {
+      "tags.keyword": "Vege"
+    }
+  }
+}
+
+# In the above query, we hve searched for all documents wehre the tags contain a string that says "Vege"
+
+#------------------------------Term Queries ---------------------------------
+#----------------------------Wildcards ----------------------------
+
+GET /products/_search
+{
+  "query": {
+    "wildcard": {
+      "tags.keyword": {
+        "value": "Vegetabl*"
+      }
+    }
+  }
+}
+
+# In the above query, we hve searched for all documents where the documents with last wrong character in the spelling of Vegetable
+
+#------------------------------Term Queries ---------------------------------
+#----------------------------Regex ----------------------------
+
+GET /products/_search
+{
+  "query": {
+    "regexp": {
+      "tags.keyword": "Vege[a-z]+ble"
+    }
+  }
+}
+
+#In the above query, we hve searched for all documents containing wrong spellings of Vegetables. You can give any regular expression here for search.
+
+#----------------------------Assignment ----------------------------
+# Products where sold is < 10
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "in_stock": {
+        "lt": 10
+      }
+    }
+  }
+}
+
+# Products where sold is < 30 and sold >= 10
+GET /products/_search
+{
+  "query": {
+    "range": {
+      "in_stock": {
+        "lte": 30,
+        "gt": 10
+      }
+    }
+  }
+}
+
+# Products where tags contain Meat
+GET /products/_search
+{
+  "query": {
+    "term": {
+      "tags.keyword": {
+        "value": "Meat"
+      }
+    }
+  }
+}	
+
+# Products where name is either Tomato or Paste
+GET /products/_search
+{
+  "query": {
+    "term": {
+      "name.keyword": {
+        "value": ["Tomato", "Paste"]
+      }
+    }
+  }
+}
+
+# Products where name is either Pasta or Paste
+GET /products/_search
+{
+  "query": {
+    "wildcard": {
+      "name": {
+        "value": "past?"
+      }
+    }
+  }
+}
