@@ -1,0 +1,42 @@
+#------------------------------Text Queries ---------------------------------
+
+#-------------------------------Match Query ----------------------------------
+
+# In the below query, you give a search phrase and basis the presence of these words, a relevance score is calculated and the documents are shown. Here, all the documents which havve apperance of Pasta and Spaghetti are shown. The text data supplied in Match query is analyzed using the fields analyzer before searching. Here, the words Pasta and Spaghetti are evaluated using "OR". You can change this to "AND" but that's not recommended as  the results will become unpredictable and relevant documents will not pop-up
+GET /recipes/_search
+{
+  "query": {
+    "match": {
+      "title": "Pasta and Spaghetti"
+    }
+  }
+}
+
+
+#-------------------------------Match Phrase Query ----------------------------------
+# In match_phrase query, you can supply a phrase and it will search for the exact match of it.
+
+
+GET /recipes/_search
+{
+  "query": {
+    "match_phrase": {
+      "title": "Pasta with"
+    }
+  }
+}
+
+# After running the above query, all the documents whose title has "Pasta With" shows up. Remember, the search phrase is also analyzed using the same analyzer which was used while indexing document for a specific field
+
+#-------------------------------Multi Match Query ----------------------------------
+# In Multi Match query, you can search the text in multiple fields. The documents containing best fields are shown with higher relevance score. For example, if you search for "Brown Fox" and the search is across two fields. Now, one document contains both the words while another document have both the words in different fields. In this case, the former is more relevant and have higher score
+
+GET /recipes/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "pasta spaghetti",
+      "fields": ["title", "description"]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+
+#------------------------------- Bool - Compound queries ----------------------------------
+# Bool is a compound query where you supply multiple leaf queries and specify the logic that must be applied. For example, let's search for the documents which have either "Pasta" or "Spaghetti" in title
+
+GET /recipes/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "title": "Pasta"
+          }
+        }, {
+          "match": {
+            "title": "spagetti"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# For and logic operation between leaf queries, use "must" instead of "should", "must_not" is equivalent of ~And (negation And)
+
+# You can also specify Filter query inside bool. Filter query filters the results basis the query's exact match or not. It's automatically used when we supply range query or use numbers. Example - the above same query with preparation time less than 15 mins.
+
+GET /recipes/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "title": "Pasta"
+          }
+        }, {
+          "match": {
+            "title": "spagetti"
+          }
+        }
+      ],
+      "filter": {
+        "range": {
+          "preparation_time_minutes": {
+            "lte": 15
+          }
+        }
+      }
+    }
+  }
+}
