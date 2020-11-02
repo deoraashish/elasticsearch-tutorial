@@ -1,0 +1,190 @@
+################################ Nested Queries ###################################
+
+# Adding a new index with type nested. This means that the documents will contain documents for the key "Employees"
+
+PUT /department?include_type_name=false
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type": "text"
+      },
+      "employees": {
+        "type": "nested"
+      }
+    }
+  }
+}
+
+# Adding documents, first IT department and then HR & Marketing department
+PUT /department/_doc/1
+{
+  "name": "Development",
+  "employees": [
+    {
+      "name": "Eric Green",
+      "age": 39,
+      "gender": "M",
+      "position": "Big Data Specialist"
+    },
+    {
+      "name": "James Taylor",
+      "age": 27,
+      "gender": "M",
+      "position": "Software Developer"
+    },
+    {
+      "name": "Gary Jenkins",
+      "age": 21,
+      "gender": "M",
+      "position": "Intern"
+    },
+    {
+      "name": "Julie Powell",
+      "age": 26,
+      "gender": "F",
+      "position": "Intern"
+    },
+    {
+      "name": "Benjamin Smith",
+      "age": 46,
+      "gender": "M",
+      "position": "Senior Software Engineer"
+    }
+  ]
+}
+
+PUT /department/_doc/2
+{
+  "name": "HR & Marketing",
+  "employees": [
+    {
+      "name": "Patricia Lewis",
+      "age": 42,
+      "gender": "F",
+      "position": "Senior Marketing Manager"
+    },
+    {
+      "name": "Maria Anderson",
+      "age": 56,
+      "gender": "F",
+      "position": "Head of HR"
+    },
+    {
+      "name": "Margaret Harris",
+      "age": 19,
+      "gender": "F",
+      "position": "Intern"
+    },
+    {
+      "name": "Ryan Nelson",
+      "age": 31,
+      "gender": "M",
+      "position": "Marketing Manager"
+    },
+    {
+      "name": "Kathy Williams",
+      "age": 49,
+      "gender": "F",
+      "position": "Senior Marketing Manager"
+    },
+    {
+      "name": "Jacqueline Hill",
+      "age": 28,
+      "gender": "F",
+      "position": "Junior Marketing Manager"
+    },
+    {
+      "name": "Donald Morris",
+      "age": 39,
+      "gender": "M",
+      "position": "SEO Specialist"
+    },
+    {
+      "name": "Evelyn Henderson",
+      "age": 24,
+      "gender": "F",
+      "position": "Intern"
+    },
+    {
+      "name": "Earl Moore",
+      "age": 21,
+      "gender": "M",
+      "position": "Junior SEO Specialist"
+    },
+    {
+      "name": "Phillip Sanchez",
+      "age": 35,
+      "gender": "M",
+      "position": "SEM Specialist"
+    }
+  ]
+}
+
+# Searching the documents the employee is Female and position is an intern
+
+GET /department/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /department/_mapping
+
+# At the place of path, you provide the key to which the nested objects are mapped. When this search query is fired, all the nested documents are searched and the main document is returned even if any single document matches the search criteria
+GET /department/_search
+{
+  "query": {
+    "nested": {
+      "path": "employees",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "term": {
+                "employees.position.keyword": "Intern"
+              }
+            },
+            {
+              "term": {
+                "employees.gender.keyword": {
+                  "value": "F"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+# In the nested search queries, if you add a key called "inner_hits" then you will be able to see the documents and in the inner documents for which the conditions met.
+GET /department/_search
+{
+  "query": {
+    "nested": {
+      "path": "employees",
+      "inner_hits": {}, 
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "term": {
+                "employees.position.keyword": "Intern"
+              }
+            },
+            {
+              "term": {
+                "employees.gender.keyword": {
+                  "value": "F"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
