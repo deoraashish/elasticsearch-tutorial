@@ -1,0 +1,221 @@
+################################ Formatting Query Results ###################################
+
+# YAML output
+
+GET /recipes/_search?format=yaml
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+# While firing curl requests from terminal, use parameter pretty in the query endpoint.
+
+# selecting specific fields of source to be returned
+
+# With _source = false, the entire _source object is omitted
+GET /recipes/_search
+{
+  "_source": false, 
+  "query": {
+    "match_all": {}
+  }
+}
+
+# Fetching a specific column; description in this case
+GET /recipes/_search
+{
+  "_source": "description", 
+  "query": {
+    "match_all": {}
+  }
+}
+
+# Fetching a set of columns
+GET /recipes/_search
+{
+  "_source": ["title", "description"],
+  "query": {
+    "match_all": {}
+  }
+}
+
+# You can also use wildcard chars to match field keys.
+
+#============================ Specifying the result size ==============================
+
+# You can supply a size key in your request to control how many documents are required. With this however, the total key stil holds the number of records that matched your query.
+
+GET /recipes/_search
+{
+  "size": 2,
+  "_source": false,
+  "query": {
+    "match_all": {}
+  }
+}
+
+
+#============================ Specifying an offset ==============================
+
+# Along with the size, you can also specify the offset as From key. By default its set to 0
+
+GET /recipes/_search
+{
+  "size": 2,
+  "from": 4, 
+  "_source": false,
+  "query": {
+    "match_all": {}
+  }
+}
+
+# Using the above you can facilitate Pagination
+
+
+#============================ Sorting results ==============================
+
+# By default, the results are sorted on _score field. You can sort them on one or many fields
+
+# Below is an example of sorting by preparation time
+
+GET /recipes/_search
+{
+  "query": {
+    "match_all": {}
+  }
+  , "sort": [
+    {
+      "preparation_time_minutes": {
+        "order": "asc"
+      }
+    }
+  ]
+}
+
+# Example of sorting basis multi level fields (note the presence of sort key in search results)
+
+GET /recipes/_search
+{
+  "query": {
+    "match_all": {}
+  }
+  , "sort": [
+    {
+      "preparation_time_minutes": {
+        "order": "asc"
+      }
+    },
+    {
+      "created": {
+        "order": "desc"
+      }
+    }
+  ]
+}
+
+# You can also use aggreations while sorting the results if the sort field has multiple values
+
+# Below example sort results basis average rating stored in the ratings array
+
+GET /recipes/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": [
+    {
+      "ratings": {
+        "order": "desc"
+        , "mode": "avg"
+      }
+    }
+  ]
+}
+
+
+#============================ Filter Query  ==============================
+
+#Filter queries are faster as they don't use relevance score for searching results.
+
+# Remember to wrap filter query always inside a bool query. Otherwise it wont work.
+
+# Example
+
+GET /recipes/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "title.keyword": {
+              "value": "Ricotta Gnocchi With Asparagus and Prosciutto"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
