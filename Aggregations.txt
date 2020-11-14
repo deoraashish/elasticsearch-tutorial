@@ -1,0 +1,482 @@
+################################ Aggregations ###################################
+
+# Mapping
+
+PUT /order?include_type_name=false
+{
+  "settings": {
+    "number_of_shards": 2,
+    "number_of_replicas": 1
+  }, 
+  "mappings": {
+    "properties": {
+      "purchased_at": {
+        "type": "date"
+      },
+      "lines": {
+        "type": "nested",
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "double"
+          },
+          "quantity": {
+            "type": "short"
+          }
+        }
+      },
+      "total_amount": {
+        "type": "double"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "sales_channel": {
+        "type": "keyword"
+      },
+      "salesman": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "text"
+          }
+        }
+      }
+    }
+  }
+}
+
+GET /order/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+################################ Metric Aggregations ###################################
+
+# These aggregations return numeric values about the data. You can filter the data by specifying query parameter. If not provided, the aggregations will run on all documents. 
+
+GET /order/_search
+{
+  "size": 0,
+  "aggs": {
+    "total_sales": {
+      "sum": {
+        "field": "total_amount"
+      }
+    },
+    "avg_sales": {
+      "avg": {
+        "field": "total_amount"
+      }
+    },
+    "max_sale": {
+      "max": {
+        "field": "total_amount"
+      }
+    },
+    "min_sales": {
+      "min": {
+        "field": "total_amount"
+      }
+    },
+    "unique_values": {
+      "value_count": {
+        "field": "total_amount"
+      }
+    }
+  }
+}
+
+GET /order/_search
+{
+  "size": 0, 
+  "aggs": {
+    "summary": {
+      "stats": {
+        "field": "total_amount"
+      }
+    }
+  }
+}
+
+
+# Please note that the value_count aggregation is not 100% accurate
+
+################################ Bucket Aggregations ###################################
+
+# Bucket aggregations sort and arrange documents as per the need.
+
+# Example of Terms aggregations. In the below aggregation, the query will return the unique values for the specified field and the count for each. These are still not 100% accurate
+
+
+GET /order/_search
+{
+  "size": 0, 
+  "aggs": {
+    "status_count": {
+      "terms": {
+        "field": "status",
+        "missing": "N/A",
+        "order": {
+          "_key": "desc"
+        }
+      }
+    }
+  }
+}
+
+################################ Nested Aggregations ###################################
+
+# You can nest metric agg inside bucket agg. The metric agg will run on all the buckets returned.
+
+# In below example, we will try to pull the metric agg for each bucket created basis status.
+
+# the metric aggregation runs in the context in which it is defined. So it can be a bucket agg output or a query output or both.
+
+GET /order/_search
+{
+  "size": 0,
+  "query": {
+    "range": {
+      "total_amount": {
+        "lte": 20
+      }
+    }
+  }, 
+  "aggs": {
+    "status_terms": {
+      "terms": {
+        "field": "status"
+      },
+      "aggs": {
+        "stats_for_each_status": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# You can place a filter inside the bucket aggs. But you cannot place a query. Query should be ideally placed before the bucket aggs param
+
+
+GET /order/_search
+{
+  "size": 0, 
+  "aggs": {
+    "low_price": {
+      "filter": {
+        "range": {
+          "total_amount": {
+            "lte": 20
+          }
+        }
+      },
+      "aggs": {
+        "stats_about_status": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# Creating custom buckets using filters api
+
+# Let's try to create two buckets of recipes, one called pasta that contains pasta in its name and another that contains spaghetti
+
+GET /recipes/_search
+{
+  "size": 0,
+  "aggs": {
+    "Pasta and Spaghetti": {
+      "filters": {
+        "filters": {
+          "pasta": {
+            "match": {
+              "title": "pasta"
+            }
+          },
+          "spaghetti": {
+            "match": {
+              "title": "spaghetti"
+            }
+          }
+        }
+      },
+      "aggs": {
+        "ratings_stats": {
+          "stats": {
+            "field": "ratings"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# Range Bucket Agg allows you to create buckets basis a range that you provide. You have range and date_range. Both of them contains "from" and "to". The from is included while to is excluded. for example, if your range is 0 to 50 then this means values >=0 and values < 50
+
+# In the below example we will create buckets of orders basis amount slabs
+
+GET /order/_search
+{
+  "size": 0,
+  "query": {
+    "range": {
+      "total_amount": {
+        "gte": 10,
+        "lte": 20
+      }
+    }
+  }, 
+  "aggs": {
+    "total_sales_slabs": {
+      "range": {
+        "field": "total_amount",
+        "keyed": true,
+        "ranges": [
+          {
+            "key": "0 to 50",
+            "from": 0,
+            "to": 51
+          },
+          {
+            "key": "51 to 100",
+            "from": 51,
+            "to": 101
+          },
+          {
+            "key": ">100",
+            "from": 100
+          }
+        ]
+      },
+      "aggs": {
+        "price_slabs_stats": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Let's say if you want to 
+
+
+# An example of Date_range bucket agg
+
+GET /order/_search
+{
+  "size": 0,
+  "aggs": {
+    "purchased_at": {
+      "date_range": {
+        "field": "purchased_at",
+        "keyed": true,
+        "format": "yyyy-mm-dd", 
+        "ranges": [
+          {
+            "from": "2016-01-01",
+            "to": "2016-01-01||+6M",
+            "key": "first_half"
+          },
+          {
+            "from": "2016-06-30",
+            "to": "2016-01-01||+12M",
+            "key": "second_half"
+          }
+        ]
+      },
+      "aggs": {
+        "purchased_at_stats": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Instead of specifying intervals on your own, you can supply an interval and it will be uniformly applied between the two supplied range.
+
+# Below is an example which creates buckets of documents with the status basis the total amount
+
+
+GET /order/_search
+{
+  "size": 0,
+  "aggs": {
+    "price_slabs": {
+      "histogram": {
+        "field": "total_amount",
+        "interval": 25
+      },
+      "aggs": {
+        "stats_about_slab": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Remember that you can specify min_doc_count and extended boundaries if you dont want to rely on the min and max value present in th data
+
+# Below is an example of Date_histogram showing.
+
+# Let's get pricing slabs for sales happened each month
+
+GET /order/_search
+{
+  "size": 0,
+  "aggs": {
+    "monthly_sales": {
+      "date_histogram": {
+        "field": "purchased_at",
+        "format": "yyyy-MM-dd",
+        "keyed": true, 
+        "interval": "month"
+      },
+      "aggs": {
+        "stats": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    }
+  }
+}
+
+# Global aggregations allows you to run your agg on all the documents ignoring anny filter or any query which is applied. syntax example,
+
+GET /order/_search
+{
+  "query": {
+    "range": {
+      "total_amount": {
+        "gte": 100
+      }
+    }
+  },
+  "size": 0,
+  "aggs": {
+    "all_orders": {
+      "global": { },
+      "aggs": {
+        "stats_amount": {
+          "stats": {
+            "field": "total_amount"
+          }
+        }
+      }
+    },
+    "stats_expensive": {
+      "stats": {
+        "field": "total_amount"
+      }
+    }
+  }
+}
+
+# Missing aggregation is another agg using which you can get null counts.
+
+# To run agg on nested objects, you need to specify nested key and the path of the nested objects.
+
+# In below example, we will try to find min age of all the employees in department index
+
+GET /department/_search
+{
+  "size":0,
+  "aggs": {
+    "employees": {
+      "nested": {
+        "path": "employees"
+      },
+      "aggs": {
+        "min_age": {
+          "min": {
+            "field": "employees.age"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
